@@ -13,6 +13,7 @@ public class ClientSocket{
     public DataOutputStream Output;
     public String Name="";
     public Socket Socket;
+    public long Sent=0; // for debug
         public ClientSocket(Socket ClSocket,DataOutputStream ClOutput){
             SocketId = SocketSystem.BindSocket();
             Socket = ClSocket;

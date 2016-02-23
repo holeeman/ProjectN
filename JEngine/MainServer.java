@@ -30,13 +30,17 @@ public class MainServer {
             if("exit".equals(Str))
                 break;
             Com = Str.split(" ",5);
-            Commands.Execute(Com,Clientlist);
+            try{
+                Commands.Execute(Com,Clientlist);
+            } catch(Exception e){e.printStackTrace();}
         }
         //서버종료
         try{
         MySql.Close();
         for(int i=0;i<Server.ClientList.size();i++){
-            Server.ClientList.get(i).Socket.close();
+            try{
+                Server.ClientList.get((long)i).Socket.close();
+            } catch(Exception e){ }
         }
         System.out.println("클라이언트 연결해제");
         Server.serverSocket.close();

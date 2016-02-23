@@ -23,7 +23,7 @@ public class MessageHandle {
                         IsEqual = ((Input.readByte()&0xff)==138);
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    //e.printStackTrace();
                     Client.Connected=false;
 	            return;
 	        }
@@ -32,18 +32,23 @@ public class MessageHandle {
 	                Input.skipBytes(11);
 	                MessageId = ByteBuffer.readShort(Input);
 	                switch (MessageId&0xffff) {
-                            case 1:
-                                SetMessageId(Buffer, Output, (short)1);
+                            case 0:
+                                SetMessageId(Buffer, Output, (short)0);
                                 ByteBuffer.writeInt(Output,(int)Client.SocketId);
                                 SendMessage(Client, Output, Buffer, MessageList);
                                 
-                                SetMessageId(Buffer, Output, (short)101);
-                                ByteBuffer.writeString(Output,"new client");
+                                SetMessageId(Buffer, Output, (short)2);
+                                ByteBuffer.writeInt(Output,(int)Client.SocketId);
                                 SendMessageToAll(Client, Output, Buffer, MessageList, ClientList);
                                     break;
                             case 5:
                                 //System.out.println(ByteBuffer.readShort(Input));
                                 //System.out.println(ByteBuffer.readShort(Input));
+                                SetMessageId(Buffer, Output, (short)5);
+                                ByteBuffer.writeInt(Output,(int)Client.SocketId);
+                                ByteBuffer.writeShort(Output,ByteBuffer.readShort(Input));
+                                ByteBuffer.writeShort(Output,ByteBuffer.readShort(Input));
+                                SendMessageToAllExceptme(Client, Output, Buffer, MessageList, ClientList);
                                     break;
                             case 100:
                                 System.out.println(ByteBuffer.readString(Input));
@@ -61,7 +66,8 @@ public class MessageHandle {
 	            	System.out.println("플레이어 "+Client.SocketId+" 타임아웃");
 	            	Client.Connected=false;
 	            }catch (IOException e){
-	                if(MainServer.ShowError)e.printStackTrace();
+                        //클라이언트에 메세지를 보낼수 없을때 연결이 끊긴것으로 간주하고 접속종료
+                        Client.Connected=false;
 	            }catch (InterruptedException e){
                         e.printStackTrace();
                     }
@@ -80,6 +86,7 @@ public class MessageHandle {
         Buffer.reset();
         Message message = new Message(Socket.SocketId, buf);
         MessageList.put(message);
+        Socket.Sent ++;
     }
     static void SendMessageToAll(ClientSocket Socket, DataOutputStream Output, ByteArrayOutputStream Buffer, LinkedBlockingQueue MessageList, HashMap<Long, ClientSocket> ClientList) throws IOException, InterruptedException{
         Output.flush();
@@ -88,9 +95,27 @@ public class MessageHandle {
         Buffer.reset();
         ClientList.entrySet().stream().forEach((c) -> {
             try{
+                c.getValue().Sent ++;
                 Message message = new Message(c.getKey(), buf);
                 MessageList.put(message);
             } catch(InterruptedException interr){ }
         });
         Buffer.reset();
-}   }
+    }
+    static void SendMessageToAllExceptme(ClientSocket Socket, DataOutputStream Output, ByteArrayOutputStream Buffer, LinkedBlockingQueue MessageList, HashMap<Long, ClientSocket> ClientList) throws IOException, InterruptedException{
+        Output.flush();
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        Buffer.writeTo(buf);
+        Buffer.reset();
+        ClientList.entrySet().stream().forEach((c) -> {
+            try{
+                c.getValue().Sent ++;
+                if(c.getValue() != Socket){
+                    Message message = new Message(c.getKey(), buf);
+                    MessageList.put(message);
+                }
+            } catch(InterruptedException interr){ }
+        });
+    }
+}
+

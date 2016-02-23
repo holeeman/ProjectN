@@ -30,8 +30,10 @@ public class Message{
             ClientList.get(ClientId).Output.flush();
             //System.out.println("Sent to "+ClientId);
             Output.close();
-        } catch(IOException e){
-            ClientList.get(ClientId).Connected = false;
+        } catch(Exception ioe){
+            try{
+                ClientList.get(ClientId).Connected = false;
+            } catch(Exception e){ }
         }
     }
     public void test(){

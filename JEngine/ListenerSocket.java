@@ -89,6 +89,9 @@ class ServerReceiver extends Thread {
                     }
                 } catch (IOException e){ System.out.print(e);}
                 MessageHandle.MessageHandle(input,buffer,output,client,ClientList,MessageList);
+                try{
+                    Thread.sleep(10);
+                } catch (InterruptedException e){e.printStackTrace();}
 	}while(client.Connected && input != null);
             try {
                 System.out.println("플레이어 "+client.SocketId+"가 접속을 종료했습니다.");

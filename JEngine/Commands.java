@@ -45,6 +45,9 @@ public class Commands {
             case "접속자수":
                 System.out.println(ClientList.size());
                     break;
+            case "debug":
+                System.out.println(ClientList.get((long)Integer.parseInt(Command[1])).Sent);
+                    break;
             default:
                 AddLine("존재하지 않는 명령어입니다. 명령어 확인은 도움말을 입력해주세요.");
                     break;
