@@ -92,15 +92,21 @@ class ServerReceiver extends Thread {
                 try{
                     Thread.sleep(10);
                 } catch (InterruptedException e){e.printStackTrace();}
-	}while(client.Connected && input != null);
+	}while(client.Connected);
             try {
+                MessageHandle.SetMessageId(buffer, output, (short)4);
+                ByteBuffer.writeInt(output, (int)client.SocketId);
+                MessageHandle.SendMessageToAllInRoomExceptMe(client, output, buffer, MessageList, ClientList);
                 System.out.println("플레이어 "+client.SocketId+"가 접속을 종료했습니다.");
-                ClientList.remove(client.SocketId);
+                ClientList.remove(client.SocketId); 
+                input.close();
+                buffer.close();
+                output.close();
                 SocketSystem.UnbindSocket(client.SocketId);
 		socket.close();//Close and Free the socket from memory
         } catch (IOException e) {//If we get an exception we coudn't close the socket
 		System.out.println("해당플레이어의 소켓을 닫는중 문제가 발생하였습니다 : "+client.SocketId+".");
-        }
+        } catch (InterruptedException e){ }
     }
     }
     class ServerSender extends Thread{

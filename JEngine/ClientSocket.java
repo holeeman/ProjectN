@@ -14,6 +14,7 @@ public class ClientSocket{
     public String Name="";
     public Socket Socket;
     public long Sent=0; // for debug
+    public int RoomIndex=0;
         public ClientSocket(Socket ClSocket,DataOutputStream ClOutput){
             SocketId = SocketSystem.BindSocket();
             Socket = ClSocket;

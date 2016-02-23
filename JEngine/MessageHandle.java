@@ -29,8 +29,9 @@ public class MessageHandle {
 	        }
 	        if (IsEqual == true) {
 	            try {
+                        Client.RoomIndex = ByteBuffer.readShort(Input)&0xffff;
+                        MessageId = ByteBuffer.readShort(Input);
 	                Input.skipBytes(11);
-	                MessageId = ByteBuffer.readShort(Input);
 	                switch (MessageId&0xffff) {
                             case 0:
                                 SetMessageId(Buffer, Output, (short)0);
@@ -39,17 +40,34 @@ public class MessageHandle {
                                 
                                 SetMessageId(Buffer, Output, (short)2);
                                 ByteBuffer.writeInt(Output,(int)Client.SocketId);
-                                SendMessageToAll(Client, Output, Buffer, MessageList, ClientList);
+                                SendMessageToAllInRoom(Client, Output, Buffer, MessageList, ClientList);
+                                    break;
+                            case 2:
+                                SetMessageId(Buffer, Output, (short)3);
+                                ByteBuffer.writeInt(Output,(int)Client.SocketId);
+                                SendMessage(ClientList.get((long)ByteBuffer.readInt(Input)), Output, Buffer, MessageList);
                                     break;
                             case 5:
-                                //System.out.println(ByteBuffer.readShort(Input));
-                                //System.out.println(ByteBuffer.readShort(Input));
+                                //System.out.println(ByteBuffer.readShort(Input)&0xffff);
+                                //System.out.println(ByteBuffer.readShort(Input)&0xffff);
                                 SetMessageId(Buffer, Output, (short)5);
                                 ByteBuffer.writeInt(Output,(int)Client.SocketId);
                                 ByteBuffer.writeShort(Output,ByteBuffer.readShort(Input));
                                 ByteBuffer.writeShort(Output,ByteBuffer.readShort(Input));
-                                SendMessageToAllExceptme(Client, Output, Buffer, MessageList, ClientList);
+                                SendMessageToAllInRoomExceptMe(Client, Output, Buffer, MessageList, ClientList);
                                     break;
+                            case 6:
+                                System.out.println("room: "+Client.RoomIndex);
+                                SetMessageId(Buffer, Output, (short)4);
+                                ByteBuffer.writeInt(Output, (int)Client.SocketId);
+                                SendMessageToAllInRoomExceptMe(Client, Output, Buffer, MessageList, ClientList);
+                                break;
+                            case 7:
+                                System.out.println("room: "+Client.RoomIndex);
+                                SetMessageId(Buffer, Output, (short)2);
+                                ByteBuffer.writeInt(Output,(int)Client.SocketId);
+                                SendMessageToAllInRoomExceptMe(Client, Output, Buffer, MessageList, ClientList);
+                                break;
                             case 100:
                                 System.out.println(ByteBuffer.readString(Input));
                                 SetMessageId(Buffer, Output, (short)101);
@@ -58,6 +76,7 @@ public class MessageHandle {
                                     break;
                             case 101:
                                 //Disconnect
+                                System.out.println("test");
                                 Client.Connected = false;
                                     break;
                                 
@@ -102,7 +121,7 @@ public class MessageHandle {
         });
         Buffer.reset();
     }
-    static void SendMessageToAllExceptme(ClientSocket Socket, DataOutputStream Output, ByteArrayOutputStream Buffer, LinkedBlockingQueue MessageList, HashMap<Long, ClientSocket> ClientList) throws IOException, InterruptedException{
+    static void SendMessageToAllExceptMe(ClientSocket Socket, DataOutputStream Output, ByteArrayOutputStream Buffer, LinkedBlockingQueue MessageList, HashMap<Long, ClientSocket> ClientList) throws IOException, InterruptedException{
         Output.flush();
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         Buffer.writeTo(buf);
@@ -111,6 +130,36 @@ public class MessageHandle {
             try{
                 c.getValue().Sent ++;
                 if(c.getValue() != Socket){
+                    Message message = new Message(c.getKey(), buf);
+                    MessageList.put(message);
+                }
+            } catch(InterruptedException interr){ }
+        });
+    }
+    static void SendMessageToAllInRoom(ClientSocket Socket, DataOutputStream Output, ByteArrayOutputStream Buffer, LinkedBlockingQueue MessageList, HashMap<Long, ClientSocket> ClientList) throws IOException, InterruptedException{
+        Output.flush();
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        Buffer.writeTo(buf);
+        Buffer.reset();
+        ClientList.entrySet().stream().forEach((c) -> {
+            try{
+                c.getValue().Sent ++;
+                if(c.getValue().RoomIndex == Socket.RoomIndex){
+                    Message message = new Message(c.getKey(), buf);
+                    MessageList.put(message);
+                }
+            } catch(InterruptedException interr){ }
+        });
+    }
+    static void SendMessageToAllInRoomExceptMe(ClientSocket Socket, DataOutputStream Output, ByteArrayOutputStream Buffer, LinkedBlockingQueue MessageList, HashMap<Long, ClientSocket> ClientList) throws IOException, InterruptedException{
+        Output.flush();
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        Buffer.writeTo(buf);
+        Buffer.reset();
+        ClientList.entrySet().stream().forEach((c) -> {
+            try{
+                c.getValue().Sent ++;
+                if(c.getValue().RoomIndex == Socket.RoomIndex && c.getValue() != Socket){
                     Message message = new Message(c.getKey(), buf);
                     MessageList.put(message);
                 }

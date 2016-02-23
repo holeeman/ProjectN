@@ -21,6 +21,7 @@ public class Message{
     }
     public void send(HashMap<Long, ClientSocket> ClientList){
         try{
+            ClientList.get(ClientId).Output.writeByte(0); //  짤림방지
             ClientList.get(ClientId).Output.writeByte(138); //  헤더 추가
             ByteBuffer.writeShort(ClientList.get(ClientId).Output, (short)Output.toByteArray().length); // 패킷에 길이 추가
             //System.out.println(Output.toByteArray().length);
