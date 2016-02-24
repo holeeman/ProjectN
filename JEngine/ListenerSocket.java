@@ -21,13 +21,13 @@ public class ListenerSocket extends Thread{
     public ServerSocket serverSocket;
     private DataInputStream NewInput;
     private DataOutputStream NewOutput;
-    final private LinkedBlockingQueue<Message> MessageList;
+    final private LinkedBlockingQueue<Packet> PacketSendQueue;
     private ClientSocket NewClient;
     private Socket NewSocket;
     private ServerSender sender = new ServerSender();
         public ListenerSocket( int Port , int MaxClients){
             ClientList = new HashMap();
-            MessageList = new LinkedBlockingQueue();
+            PacketSendQueue = new LinkedBlockingQueue();
             Collections.synchronizedMap(ClientList);
                 try {
                     serverSocket = new ServerSocket(Port);
@@ -65,16 +65,12 @@ class ServerReceiver extends Thread {
     //클라이언트 담당
         Socket socket;
         DataInputStream input;
-        ByteArrayOutputStream buffer;
-        DataOutputStream output;
         ClientSocket client;
  
         public ServerReceiver(ClientSocket cl, DataInputStream in) {
             this.socket = cl.Socket;
             try {
                 input = in;
-                buffer = new ByteArrayOutputStream();
-                output = new DataOutputStream(new BufferedOutputStream(buffer));
                 client = cl;
             } catch (Exception e) {if(MainServer.ShowError)System.out.println(e);
             }
@@ -88,20 +84,19 @@ class ServerReceiver extends Thread {
                         client.Connected = false;
                     }
                 } catch (IOException e){ System.out.print(e);}
-                MessageHandle.MessageHandle(input,buffer,output,client,ClientList,MessageList);
+                MessageHandle.MessageHandle(input,client,ClientList,PacketSendQueue);
                 try{
                     Thread.sleep(10);
                 } catch (InterruptedException e){e.printStackTrace();}
 	}while(client.Connected);
             try {
-                MessageHandle.SetMessageId(buffer, output, (short)4);
-                ByteBuffer.writeInt(output, (int)client.SocketId);
-                MessageHandle.SendMessageToAllInRoomExceptMe(client, output, buffer, MessageList, ClientList);
+                Message message = new Message(4);
+                message.writeInt((int)client.SocketId);
+                message.SendMessageToAllInRoomExceptMe(client, PacketSendQueue, ClientList);
+                
                 System.out.println("플레이어 "+client.SocketId+"가 접속을 종료했습니다.");
                 ClientList.remove(client.SocketId); 
                 input.close();
-                buffer.close();
-                output.close();
                 SocketSystem.UnbindSocket(client.SocketId);
 		socket.close();//Close and Free the socket from memory
         } catch (IOException e) {//If we get an exception we coudn't close the socket
@@ -114,12 +109,9 @@ class ServerReceiver extends Thread {
         public void run() {
             while(true){
                 try{
-                    Message message = MessageList.take();
-                    //메세지리스트에 있는 패킷 차례대로 전송
-                    //message.test();
-                    message.send(ClientList);
-                    }
-                catch(InterruptedException e){ System.out.println("asdf");}
+                    Packet packet = PacketSendQueue.take();
+                    packet.send();
+                } catch(InterruptedException e){ }
             }
         }
     }

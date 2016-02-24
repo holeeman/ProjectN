@@ -6,41 +6,99 @@
 package JEngine;
 
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 /**
  *
  * @author runway3207
  */
 public class Message{
-    final private long ClientId;
-    final public ByteArrayOutputStream Output;
-    public Message(long id , ByteArrayOutputStream out){
-        ClientId = id;
-        Output = out;
+    private ByteArrayOutputStream output;
+    private DataOutputStream writer;
+    
+    public Message(int message_id){
+        this(32, message_id);
     }
-    public void send(HashMap<Long, ClientSocket> ClientList){
+    
+    public Message(int size, int message_id){
+        this.output = new ByteArrayOutputStream(size);
+        this.writer = new DataOutputStream(this.output);
         try{
-            ClientList.get(ClientId).Output.writeByte(0); //  짤림방지
-            ClientList.get(ClientId).Output.writeByte(138); //  헤더 추가
-            ByteBuffer.writeShort(ClientList.get(ClientId).Output, (short)Output.toByteArray().length); // 패킷에 길이 추가
-            //System.out.println(Output.toByteArray().length);
-            for(byte b:Output.toByteArray()){
-                ClientList.get(ClientId).Output.writeByte(b);
-            }
-            ClientList.get(ClientId).Output.flush();
-            //System.out.println("Sent to "+ClientId);
-            Output.close();
-        } catch(Exception ioe){
-            try{
-                ClientList.get(ClientId).Connected = false;
-            } catch(Exception e){ }
-        }
+            this.writer.writeShort(Short.reverseBytes((short)message_id));
+        } catch(IOException e){ }
     }
+    
+    public void writeByte(byte b){
+        try{
+            this.writer.writeByte(b);
+        } catch(IOException e){ }
+    }
+    public void writeShort(short s){
+        try{
+            ByteBuffer.writeShort(this.writer, s);
+        } catch(IOException e){ }
+    }
+    public void writeInt(int i){
+        try{
+            ByteBuffer.writeInt(this.writer, i);
+        } catch(IOException e){ }
+    }
+    public void writeLong(long l){
+        try{
+            ByteBuffer.writeLong(this.writer, l);
+        } catch(IOException e){ }
+    }
+    public void writeString(String s){
+        ByteBuffer.writeString(this.writer, s);
+    }
+    
+    public Packet getPacket(ClientSocket client){
+        return new Packet(client, this.output.toByteArray());
+    }
+    
+    public void SendMessage(ClientSocket client, LinkedBlockingQueue SendingQueue) throws IOException, InterruptedException{
+        SendingQueue.put(getPacket(client));
+    }
+    public void SendMessageToAll(LinkedBlockingQueue SendingQueue, HashMap<Long, ClientSocket> ClientList) throws IOException, InterruptedException{
+        ClientList.entrySet().stream().forEach((c) -> {
+            try{
+                SendingQueue.put(getPacket(c.getValue()));
+            } catch(InterruptedException interr){ }
+        });
+    }
+    public void SendMessageToAllExceptMe(ClientSocket client, LinkedBlockingQueue SendingQueue, HashMap<Long, ClientSocket> ClientList) throws IOException, InterruptedException{
+        ClientList.entrySet().stream().forEach((c) -> {
+            try{
+                if(c.getValue() != client){
+                    SendingQueue.put(getPacket(c.getValue()));
+                }
+            } catch(InterruptedException interr){ }
+        });
+    }
+    public void SendMessageToAllInRoom(ClientSocket client, LinkedBlockingQueue SendingQueue, HashMap<Long, ClientSocket> ClientList) throws IOException, InterruptedException{
+        ClientList.entrySet().stream().forEach((c) -> {
+            try{
+                if(c.getValue().RoomIndex == client.RoomIndex){
+                    SendingQueue.put(getPacket(c.getValue()));
+                }
+            } catch(InterruptedException interr){ }
+        });
+    }
+    public void SendMessageToAllInRoomExceptMe(ClientSocket client, LinkedBlockingQueue SendingQueue, HashMap<Long, ClientSocket> ClientList) throws IOException, InterruptedException{
+        ClientList.entrySet().stream().forEach((c) -> {
+            try{
+                if(c.getValue().RoomIndex == client.RoomIndex && c.getValue() != client){
+                    SendingQueue.put(getPacket(c.getValue()));
+                }
+            } catch(InterruptedException interr){ }
+        });
+    }
+    
     public void test(){
-        System.out.println("Send To "+ClientId);
         System.out.println("start");
-            for (byte b:Output.toByteArray()){
+            for (byte b:this.output.toByteArray()){
                 System.out.println(b&0xff);
             }
             System.out.println("end");
